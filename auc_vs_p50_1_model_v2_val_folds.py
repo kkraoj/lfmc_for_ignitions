@@ -263,6 +263,7 @@ P50_DICT = {'low':(df.p50>=-5),
 auc = calc_auc_diff(df, LC_DICT, category = "landcover", replace_by_random = True)
 
 plot_importance(auc)
+
 # print(mean)
 # print(std)
 
