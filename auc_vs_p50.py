@@ -111,7 +111,7 @@ def calc_auc_occurence(dfsub, category_dict, clf):
             
     return auc
 
-def ensemble_auc(dfsub, category_dict, clf, iters = 100, label = 'All variables'):
+def ensemble_auc(dfsub, category_dict, clf, iters = 10, label = 'All variables'):
     clf.random_state = 0
     dummy = calc_auc_occurence(dfsub, category_dict, clf)
     aucs = np.expand_dims(dummy.values, axis = 2)

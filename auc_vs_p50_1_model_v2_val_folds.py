@@ -13,29 +13,51 @@ import pandas as pd
 import seaborn as sns
 import sklearn.ensemble
 import sklearn.metrics
+import sklearn.model_selection
 import statsmodels.api as sm
 
 import init
 
 sns.set(style='ticks',font_scale = 0.9)
 
-def assemble_df():
-    df = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_with_climate_500m_variogram.csv"))
-    
-    dfr = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_extra_lfmc_vars_500m_variogram.csv"))
-    dfr = dfr[['lfmc_t_1_seasonal_mean_inside','lfmc_t_1_seasonal_mean_outside', 'lfmc_t_2_inside', 'lfmc_t_2_outside']]
-    df = df.join(dfr)
-    
-    dfr = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_fwi_500m_variogram.csv"))
-    dfr = dfr[['fwi_t_4_inside','fwi_t_4_outside']]
-    df = df.join(dfr)
-    
+def assemble_df(buffer = "lfmc_variogram"):
+    columns = ['system:index', 'BurnDate', 'FirstDay', 'LastDay', 'QA', 'Uncertainty',
+       'area', 'erc_t_15_inside', 'erc_t_15_outside',
+       'landcover', 'lfmc_t_1_inside', 'lfmc_t_1_outside', 'ppt_t_1_inside',
+       'ppt_t_1_outside', 'system:time_start', 'vpd_t_4_inside',
+       'vpd_t_4_outside', 'year', '.geo', 'lfmc_t_1_seasonal_mean_inside',
+       'lfmc_t_1_seasonal_mean_outside', 'lfmc_t_2_inside', 'lfmc_t_2_outside',
+       'fwi_t_4_inside', 'fwi_t_4_outside', 'p50']
+    if buffer == "lfmc_variogram":
+        df = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_with_climate_500m_variogram.csv"))
+        
+        dfr = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_extra_lfmc_vars_500m_variogram.csv"))
+        dfr = dfr[['lfmc_t_1_seasonal_mean_inside','lfmc_t_1_seasonal_mean_outside', 'lfmc_t_2_inside', 'lfmc_t_2_outside']]
+        df = df.join(dfr)
+        
+        dfr = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_fwi_500m_variogram.csv"))
+        dfr = dfr[['fwi_t_4_inside','fwi_t_4_outside']]
+        df = df.join(dfr)
+        
+
+    elif buffer == "constant":
+        df = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_with_climate_fwi_extra_lfmc_vars_constant_buffer_20km_width_10km.csv"))
+
+    elif buffer == "vpd_variogram":
+        df = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_LFMC_climate_FWI_500m_variogram_of_vpd_4_oct_2021.csv"))
+  
+    elif buffer == "lfmc_variogram_large":
+        df = pd.read_csv(os.path.join(init.dir_data, "fire_collection_median_LFMC_climate_FWI_500m_variogram_of_LFMC_100km_max.csv"))
+
+        
     dfr = pd.read_csv(os.path.join(init.dir_data, "fire_collection_500m_with_p50.csv"))
     dfr = dfr[['p50']]
     df = df.join(dfr)
     
     df = df.loc[df.landcover.isin(init.lc_dict.keys())]
     df['landcover'] = df.landcover.map(init.lc_dict)
+    df = df[columns]
+
     return df
 
 
@@ -50,22 +72,21 @@ def plot_p50_hist(df):
 #%% just lfmc first 
 
 
-def auc_by_cat(clf, ndf, ndf_dict, kind = 'occurence'):
+def auc_by_cat(clf, ndf, ndf_dict, test_index, kind = 'occurence'):
     auc = pd.DataFrame(index = [0],columns = ndf_dict.keys())
     for cat in auc.columns:
-        sub = ndf.loc[ndf_dict[cat]].copy()
+        select = ndf_dict[cat]
+        select = select[select].index
+        select = list(set(select)&set(test_index))
+        sub = ndf.loc[select].copy()
         if kind == "occurence":
-            X = sub.drop(['fire'], axis = 1)
-            y = sub['fire']
-            # auc.loc[0,cat] = sklearn.metrics.roc_auc_score(y, clf.predict(X))
-            auc.loc[0,cat] = sklearn.metrics.roc_auc_score(y, clf.oob_decision_function_.argmax(axis = 1)[ndf_dict[cat]])
-        else:
-            X = sub.drop(['size'], axis = 1)
-            y = sub['size']
+            X = sub.drop(['fire'], axis = 1).values
+            y = sub['fire'].values
             try:
-                auc.loc[0,cat] = sklearn.metrics.roc_auc_score(y, clf.oob_decision_function_.argmax(axis = 1)[ndf_dict[cat]])
-            except:
-                auc.loc[0,cat] = np.nan
+                auc.loc[0,cat] = sklearn.metrics.roc_auc_score(y,clf.predict(X))
+            except ValueError:
+                print(f"[INFO] No data for this fold in {cat}. Skipping.")
+                auc.loc[0,cat] = sklearn.metrics.roc_auc_score(y,clf.predict(X))
     return auc
 
 def calc_auc_size(dfsub, clf):
@@ -92,9 +113,9 @@ def calc_auc_size(dfsub, clf):
     # print(auc)        
     return auc
 
-def calc_auc_occurence(dfsub, category_dict, category, clf):
+def calc_auc_occurence(dfsub, category_dict, category, clf, folds = 3, n_cv_reps = 5):
     df = dfsub.copy()
-    # auc = pd.DataFrame(index = [0],columns = category_dict.keys())
+    auc = pd.DataFrame(index = range(folds),columns = category_dict.keys())
 
     ndf = pd.DataFrame()
     
@@ -114,29 +135,37 @@ def calc_auc_occurence(dfsub, category_dict, category, clf):
     ndf_dict = {}
     for i in ndf[category].unique():
         ndf_dict[i] = ndf[category]==i
-    ndf = ndf.drop([category], axis = 1)
-    X = ndf.drop(['fire'], axis = 1)
-    y = ndf['fire']
+    ndf = ndf.drop(category, axis = 1)
+    X = ndf.drop(['fire'], axis = 1).values
+    y = ndf['fire'].values
     
-    try:
-        clf.fit(X, y)
-        # rfc_disp = sklearn.metrics.plot_roc_curve(clf, X, y, ax=ax,label = lc,color = color_dict[lc])
-        auc = auc_by_cat(clf, ndf, ndf_dict, kind = 'occurence')
-        return auc
-    except: 
-        print("Could not fit RF")
-        auc = pd.DataFrame(index = [0],columns = ndf_dict.keys())
-        auc.loc[:,:] = np.nan
-        return auc
+    for rep in n_cv_reps
+    kf = sklearn.model_selection.KFold(n_splits=folds, shuffle = False, random_state = 42)
+    for index, (train_index, test_index) in enumerate(kf.split(X)):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+        try:
+            clf.fit(X_train, y_train)
+            # rfc_disp = sklearn.metrics.plot_roc_curve(clf, X, y, ax=ax,label = lc,color = color_dict[lc])
+            auc.loc[index, :] = auc_by_cat(clf, ndf, ndf_dict, test_index, kind = 'occurence').values
+        except: 
+            print("Could not fit RF")
+            auc.loc[index,:] = np.nan
 
-def ensemble_auc(dfsub, category_dict, category, clf, iters = 10, label = 'All variables'):
+    auc.loc[0,:] = auc.mean()
+    auc = auc.drop(auc.index.difference([0]), axis = 0)
+    return auc
+
+
+def ensemble_auc(dfsub, category_dict, category, clf, iters = 5, label = 'All variables'):
     clf.random_state = 0
     dummy = calc_auc_occurence(dfsub, category_dict, category, clf)
     aucs = np.expand_dims(dummy.values, axis = 2)
     for itr in range(1, iters):
+        print(f"[INFO] Fitting RF for iteration {itr}/{iters}")
         clf.random_state = itr
         auc = np.expand_dims(calc_auc_occurence(dfsub, category_dict, category, clf).values, axis = 2)
-        
+        print(f"[INFO] Average AUC = {auc.mean(axis = 1)[0][0]:0.2f}")
         aucs = np.append(aucs,auc, axis = 2)
     # print("aucs ready")
     dummy.loc[:,:] = np.nanmean(aucs.astype(float), axis = 2)
@@ -168,7 +197,7 @@ def calc_auc_diff(dfs, category_dict, category, replace_by_random = False):
     ###testing with random numbers instead of LFMC
     # df.loc[:,remove_lfmc] = np.zeros(shape = df.loc[:,remove_lfmc].shape)
     # clf = sklearn.ensemble.RandomForestClassifier(max_depth=15, min_samples_leaf = 5, random_state=0, oob_score = True,n_estimators = 50)
-    clf = sklearn.ensemble.RandomForestClassifier(max_depth=None, random_state=0, oob_score = True,n_estimators = 50)
+    clf = sklearn.ensemble.RandomForestClassifier(max_depth=8, random_state=0, oob_score = True,n_estimators = 50)
 
     allVars, ql, qu = ensemble_auc(df, category_dict,category, clf)
     
@@ -220,7 +249,7 @@ def plot_importance(df):
 
 ##############################################################################
 
-df = assemble_df()
+df = assemble_df(buffer = "lfmc_variogram_large")
 df = df.loc[df.BurnDate>=150]
 # df = df.loc[df.area>=1]
 LC_DICT = {}

@@ -107,7 +107,7 @@ def calc_auc_occurence(dfsub, category_dict, clf, folds = 3):
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
             try:
-                print(f"[INFO] Fitting RF for {category}\t fold {index}.")
+                # print(f"[INFO] Fitting RF for {category}\t fold {index}.")
                 clf.fit(X_train, y_train)
                 # rfc_disp = sklearn.metrics.plot_roc_curve(clf, X, y, ax=ax,label = lc,color = color_dict[lc])
                 auc.loc[index,category] = sklearn.metrics.roc_auc_score(y_test,clf.predict(X_test))
@@ -118,7 +118,7 @@ def calc_auc_occurence(dfsub, category_dict, clf, folds = 3):
     auc = auc.drop(auc.index.difference([0]), axis = 0)
     return auc
 
-def ensemble_auc(dfsub, category_dict, clf, iters = 100, label = 'All variables'):
+def ensemble_auc(dfsub, category_dict, clf, iters = 10, label = 'All variables'):
     clf.random_state = 0
     dummy = calc_auc_occurence(dfsub, category_dict, clf)
     aucs = np.expand_dims(dummy.values, axis = 2)
@@ -126,7 +126,7 @@ def ensemble_auc(dfsub, category_dict, clf, iters = 100, label = 'All variables'
         print(f"[INFO] Fitting RF for iteration {itr}/{iters}")
         clf.random_state = itr
         auc = np.expand_dims(calc_auc_occurence(dfsub, category_dict, clf).values, axis = 2)
-        
+        print(f"[INFO] Average AUC = {auc.mean(axis = 1)[0][0]:0.2f}")
         aucs = np.append(aucs,auc, axis = 2)
     # print("aucs ready")
     dummy.loc[:,:] = np.nanmean(aucs.astype(float), axis = 2)
@@ -158,7 +158,7 @@ def calc_auc_diff(dfs, category_dict, replace_by_random = False):
     ###testing with random numbers instead of LFMC
     # df.loc[:,remove_lfmc] = np.zeros(shape = df.loc[:,remove_lfmc].shape)
     # clf = sklearn.ensemble.RandomForestClassifier(max_depth=15, min_samples_leaf = 5, random_state=0, oob_score = True,n_estimators = 50)
-    clf = sklearn.ensemble.RandomForestClassifier(max_depth=None, random_state=0, oob_score = True,n_estimators = 50)
+    clf = sklearn.ensemble.RandomForestClassifier(random_state=0, oob_score = False,n_estimators = 50, min_impurity_decrease = 0.1)
 
     allVars, ql, qu = ensemble_auc(df, category_dict, clf)
     
@@ -205,7 +205,7 @@ def plot_importance(df):
     ax1.set_ylabel("")
     ax1.set_xlabel('AUC')
     
-    ax1.set_xlim(0.5,1)
+    ax1.set_xlim(0.0,1)
     # ax1.set_title("Small fires")
 
 ##############################################################################
