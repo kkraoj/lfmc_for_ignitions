@@ -89,30 +89,6 @@ def auc_by_cat(clf, ndf, ndf_dict, test_index, kind = 'occurence'):
                 auc.loc[0,cat] = sklearn.metrics.roc_auc_score(y,clf.predict(X))
     return auc
 
-def calc_auc_size(dfsub, clf):
-    df = dfsub.copy()
-    auc = pd.DataFrame(index = sorted(df.landcover.unique()),columns = ['auc'])
-    for lc in sorted(df.landcover.unique()):
-        ndf = df.loc[df.landcover==lc].copy()
-      
-        # ndf['size'] = 0
-        # ndf.loc[ndf.area>4,'size'] = 1
-        ndf = ndf.sample(frac=1).reset_index(drop=True)
-        ndf.dropna(inplace = True)
-        # print(ndf.columns)
-        X = ndf.drop(['size', 'area', "landcover"], axis = 1)
-        y = ndf['size']
-        # print(y.mean())
-        try:
-            clf.fit(X, y)
-            # rfc_disp = sklearn.metrics.plot_roc_curve(clf, X, y, ax=ax,label = lc,color = color_dict[lc])
-            auc.loc[lc,'auc'] = sklearn.metrics.roc_auc_score(y, clf.predict(X))
-            # print(sklearn.metrics.roc_auc_score(y, clf.predict(X)))
-        except: 
-            print("Could not fit RF for land cover: %s"%(lc))
-    # print(auc)        
-    return auc
-
 def calc_auc_occurence(dfsub, category_dict, category, clf, folds = 3, n_cv_reps = 5):
     df = dfsub.copy()
     auc = pd.DataFrame(index = range(folds),columns = category_dict.keys())
@@ -157,13 +133,13 @@ def calc_auc_occurence(dfsub, category_dict, category, clf, folds = 3, n_cv_reps
     return auc
 
 
-def ensemble_auc(dfsub, category_dict, category, clf, iters = 5, label = 'All variables'):
-    clf.random_state = 0
+def ensemble_auc(dfsub, category_dict, category, clf, seeds = 5, label = 'All variables'):
     dummy = calc_auc_occurence(dfsub, category_dict, category, clf)
     aucs = np.expand_dims(dummy.values, axis = 2)
-    for itr in range(1, iters):
+    for 
+    for seed in range(seeds):
         print(f"[INFO] Fitting RF for iteration {itr}/{iters}")
-        clf.random_state = itr
+        clf.random_state = seed
         auc = np.expand_dims(calc_auc_occurence(dfsub, category_dict, category, clf).values, axis = 2)
         print(f"[INFO] Average AUC = {auc.mean(axis = 1)[0][0]:0.2f}")
         aucs = np.append(aucs,auc, axis = 2)
@@ -177,7 +153,7 @@ def ensemble_auc(dfsub, category_dict, category, clf, iters = 5, label = 'All va
     return mean, ql, qu
     
 
-def calc_auc_diff(dfs, category_dict, category, replace_by_random = False):
+def calc_aucs(dfs, category_dict, category, replace_by_random = True):
     df = dfs.copy()
     allVars = pd.DataFrame(index = [0],columns = category_dict.keys())
     onlyClimate = allVars.copy()
@@ -199,7 +175,7 @@ def calc_auc_diff(dfs, category_dict, category, replace_by_random = False):
     # clf = sklearn.ensemble.RandomForestClassifier(max_depth=15, min_samples_leaf = 5, random_state=0, oob_score = True,n_estimators = 50)
     clf = sklearn.ensemble.RandomForestClassifier(max_depth=8, random_state=0, oob_score = True,n_estimators = 50)
 
-    allVars, ql, qu = ensemble_auc(df, category_dict,category, clf)
+    allVars= ensemble_auc(df, category_dict,category, clf)
     
     
     # allVars = calc_auc(df, size_dict, clf)
@@ -208,24 +184,14 @@ def calc_auc_diff(dfs, category_dict, category, replace_by_random = False):
     if replace_by_random:
         ###testing with random numbers instead of LFMC
         df.loc[:,remove_lfmc] = np.random.uniform(size = df.loc[:,remove_lfmc].shape)
-        onlyClimate, _, _ = ensemble_auc(df,category_dict, category, clf)
+        onlyClimate = ensemble_auc(df,category_dict, category, clf)
     else:
-        onlyClimate, _, _ = ensemble_auc(df.drop(remove_lfmc, axis = 1), category_dict,category, clf)
+        onlyClimate = ensemble_auc(df.drop(remove_lfmc, axis = 1), category_dict,category, clf)
     
-    diff = (allVars - onlyClimate).copy().astype(float).round(3)
     onlyClimate.index.name = "only climate"
-    diff.index.name = "difference, mean"
     allVars.index.name = "all variables"
     
-    # sd = (s1.pow(2)+s2.pow(2)).pow(0.5).astype(float).round(3)
-    ql.index.name = "difference, ql"
-    qu.index.name = "difference, qu"
-    # print(onlyClimate.astype(float).round(2))
-    # print(allVars.astype(float).round(2))
-    # print(diff.astype(float).round(2))
-    # print(sd.astype(float).round(2))
-    
-    df = pd.DataFrame({"all_vars":allVars.iloc[0], "only_climate":onlyClimate.iloc[0], "lower_q": ql.iloc[0], "upper_q":qu.iloc[0]})
+    df = pd.DataFrame({"all_vars":allVars.iloc[0], "only_climate":onlyClimate.iloc[0]})
     df = df.sort_values("all_vars", ascending = True)
 
     return df
@@ -260,9 +226,9 @@ P50_DICT = {'low':(df.p50>=-5),
              }
 # plot_p50_hist(df)
 
-auc = calc_auc_diff(df, LC_DICT, category = "landcover", replace_by_random = True)
+auc = calc_aucs(df, LC_DICT, category = "landcover", replace_by_random = True)
 
-plot_importance(auc)
+plot_box(auc)
 
 # print(mean)
 # print(std)
