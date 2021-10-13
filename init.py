@@ -51,3 +51,16 @@ lfmc_thresholds = {'Closed broadleaf\ndeciduous':[72,105,125],
               'Shrubland':[106,121,133],
               'Grassland':[55,67,110],
               } 
+
+trait_keys = {"landcover":sorted(['Closed broadleaf\ndeciduous',
+              'Closed needleleaf\nevergreen',
+              'Mixed forest',
+              'Shrub/grassland',
+              'Shrubland',
+              'Grassland']),
+              "p50":['(-14.100999999999999, -7.2]' , '(-7.2, -5.1]' , '(-5.1, -4.1]' , '(-4.1, -3.9]' , '(-3.9, -1.0]'],
+              "sigma":['(-0.901, 0.4]' , '(0.4, 0.5]' , '(0.5, 0.6]' , '(0.6, 0.7]' , '(0.7, 1.0]'],
+              "p50liu":['(-0.001, 1.6]' , '(1.6, 2.0]' , '(2.0, 4.0]' , '(4.0, 6.0]' , '(6.0, 12.0]'],
+              "rootdepth":['(-0.001, 2.0]' , '(2.0, 3.0]' , '(3.0, 3.7]' , '(3.7, 4.9]' , '(4.9, 17.5]'],
+              "hft":[]
+              }
