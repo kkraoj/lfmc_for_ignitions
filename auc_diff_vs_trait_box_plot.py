@@ -21,7 +21,7 @@ import statsmodels.api as sm
 import init
 
 
-def assemble_df(buffer_size = 10000, trait = "p50_liu"):
+def assemble_df(buffer_size = 10000, trait = "p50_liu", bins = 10):
     df = pd.read_csv(os.path.join(init.dir_data, "varying_buffers", \
                     f"fire_collection_median_with_climate_fwi_extra_lfmc_vars_constant_buffer_{buffer_size:d}_width_10km.csv"))
     # dfr = pd.read_csv(os.path.join(init.dir_data, "fire_collection_500m_with_p50.csv"))
@@ -34,10 +34,10 @@ def assemble_df(buffer_size = 10000, trait = "p50_liu"):
     
     df = df.rename(columns = {'isohydricity':'sigma',"root_depth":"rootdepth","p50_liu":"p50liu"})
       
-    df["p50"] = pd.qcut(df.p50.round(1), 5).astype(str)
-    df["sigma"] = pd.qcut(df.sigma.round(1), 5).astype(str)
-    df["p50liu"] = pd.qcut(df.p50liu.round(0), 5).astype(str)
-    df["rootdepth"] = pd.qcut(df.rootdepth.round(1), 5).astype(str)
+    df["p50"] = pd.qcut(df.p50, bins, labels = init.trait_keys[trait]).astype(str)
+    df["sigma"] = pd.qcut(df.sigma, bins, labels = init.trait_keys[trait]).astype(str)
+    df["p50liu"] = pd.qcut(df.p50liu, bins, labels = init.trait_keys[trait]).astype(str)
+    df["rootdepth"] = pd.qcut(df.rootdepth, bins, labels = init.trait_keys[trait]).astype(str)
     # df["hft"] = pd.qcut(df.hft, 6)
 
     
@@ -172,7 +172,7 @@ def main():
     # box_plot_lc(to_plot)
     
     #%% p50 auc diff plot
-    trait = "p50liu"
+    trait = "p50"
     allVars, onlyClimate, diff = ensemble(trait = trait)
     box_plot_trait(diff, trait = trait)
     
