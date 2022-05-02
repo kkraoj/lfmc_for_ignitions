@@ -17,6 +17,12 @@ lc_dict = {
             120:'Shrub/grassland',
             130:'Shrubland',
             140:'Grassland',
+            41: "Forest",
+              42:"Forest",
+              43:"Forest",
+              71:"Grass", # grass
+              81:"Grass",
+              52:"Shrubs", #shrub
             }
 
 short_lc = {'enf':'Closed needleleaf\nevergreen',
@@ -39,6 +45,7 @@ color_dict = {'Closed broadleaf\ndeciduous':'darkorange',
               'Shrub/grassland' :'y' ,
               'Shrubland':'tan',
               'Grassland':'lime',
+              'All':'black',
               }  
 
 units = {'lfmc':'(%)','vpd':'(hPa)','erc':'','ppt':r'(mm/month)'}
@@ -67,3 +74,57 @@ trait_keys = {"landcover":sorted(['Closed broadleaf\ndeciduous',
               # "p50liu":['(-0.001, 1.6]' , '(1.6, 2.0]' , '(2.0, 4.0]' , '(4.0, 6.0]' , '(6.0, 12.0]'],
               # "rootdepth":['(-0.001, 2.0]' , '(2.0, 3.0]' , '(3.0, 3.7]' , '(3.7, 4.9]' , '(4.9, 17.5]'],
               }
+
+thresh = {'extreme':{
+          41:89, # forest # used to be 72
+          42:89,
+          43:89,
+          71:55, # grass used to be 55
+          81:55,
+          52:106, #shrub
+          },
+          "high":{
+          41:105,
+          42:105,
+          43:105,
+          71:67,
+          81:67,
+          52:121,
+          },
+          "moderate":{
+          41:125,
+          42:125,
+          43:125,
+          71:110,
+          81:110,
+          52:133,
+          }}
+
+thresh_abs = {"Low":[0,80],
+              "Medium":[80,100],
+              "High":[100,210]}
+
+# thresh_diff = {"Low":[-15,0],
+#               "Medium":[-25,-15],
+#               "High":[-100,-25]}
+
+thresh_diff = {"Low":[-10.7613601276624,0],
+              "Medium":[-18.177667197193202,-10.7613601276624],
+              "High":[-28.30489991954196,-18.177667197193202],
+              "Extreme":[-103.691666666667,-28.30489991954196]}
+
+var_names = {'longitude':"Longitude", 
+             'latitude':"Latitude",
+             'vpd_4m':r"VPD$_{\rm 4\ months\ mean}$",
+             'ppt_1y':r"P$_{\rm 12\ months\ sum}$",
+             'agb':"AGB",
+             'wind':"Wind speed"}
+
+states = ["Washington", "Oregon","California","Idaho",\
+          "Utah","Arizona","Nevada","New Mexico",\
+          "Wyoming","Montana","Colorado","Texas"]
+
+lc_color = {"shrub":"darkgoldenrod",
+            "forest":"forestgreen",
+            "grass":"lawngreen",
+            "all":"k"}
