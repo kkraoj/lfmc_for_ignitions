@@ -118,8 +118,7 @@ df["z_moderate"]= (df.lfmc <= list( map(init.thresh["moderate"].get, df.lc) )).a
 df["z_ndvi"] = (df.ndvi_1m >= df.mean_ndvi).astype(int)
 df["z_wind"] = (df.wind >= df.wind.quantile(0.50)).astype(int)
 df["z_vpd"] = (df.vpd >= df.mean_vpd).astype(int)
-# df.z_moderate.mean()
-df.to_csv(os.path.join(init.dir_root, "data","r","rct_22_apr_2022.csv"))
+# df.to_csv(os.path.join(init.dir_root, "data","r","rct_22_apr_2022.csv"))
 # df.head()['.geo'].apply(get_lon)    
 fig, ax = plt.subplots()
 sns.kdeplot(x = "lfmc", data =  df.loc[(df.fire==0)],alpha = 0.5,\
@@ -144,3 +143,16 @@ print("Extreme\n",sklearn.metrics.confusion_matrix(df.fire, df.z_extreme))
 print("High\n",sklearn.metrics.confusion_matrix(df.fire, df.z_high))
 print("Moderate\n",sklearn.metrics.confusion_matrix(df.fire, df.z_moderate))
 
+#%% lightnings by year
+df['year'] = pd.to_datetime(df.date).dt.year
+year_lc = df.groupby(['year','lc']).agb.count().to_frame()
+year_lc = pd.pivot_table(year_lc, index = "year",columns = "lc", values = "agb")
+year_lc.columns = year_lc.columns.astype(int)
+
+year_lc = year_lc.loc[:,[42,52,71]]
+
+# year_lc.columns = year_lc.columns.map(init.lc_dict)
+year_lc.astype(int)
+year_lc.sum(axis = 1)
+
+df.groupby(["year","z_extreme"]).agb.count().to_frame()

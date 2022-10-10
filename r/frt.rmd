@@ -236,14 +236,14 @@ df <- subset(df, !lc %in% c(41,43,81))
 table(df$lc)
 cat(sprintf("Mean fire in df = %f\n",mean(df$fire)))
 colnames(df)[colnames(df) == 'fire'] <- 'y'
-reload = FALSE
+reload = TRUE
 for (treatment in treatments){
   for (slc in  c(42, 52, 71)){
     sdf = subset(df, lc==slc)
     print(dim(sdf))
     sdf$z <- sdf[,treatment]
     if (reload) {
-      load(sprintf("D:/Krishna/projects/lfmc_for_ignitions/data/r/matching_28_feb_2022_%s.RData", treatment))
+      load(sprintf("D:/Krishna/projects/lfmc_for_ignitions/data/r/matches/matching_22_apr_2022_%s_%s.RData", treatment, lcmap[lcmap$key==slc,"value"]))
     } else{
       options("optmatch_max_problem_size" = Inf)
       
@@ -270,6 +270,7 @@ for (treatment in treatments){
 }
 # dim(df)
 ```
+
 ```{r}
 ## exporting matched data for plotting in python
 for (slc in  c(42, 52, 71)){
@@ -376,5 +377,64 @@ print(pval_1)
 ```
 
 
+```{r}
+# matches by year
 
 
+treatments <- c("z_extreme")
+years <- c(2016, 2017, 2018, 2019, 2020, 2021)
+lcmap <- data.frame("key" = c(0, 42, 52, 71), "value" = c("all","forest", "shrub","grass"))
+
+df <- read.csv("D:/Krishna/projects/lfmc_for_ignitions/data/r/rct_22_apr_2022.csv")
+df$year <- as.integer(substr(df$date,1,4))
+
+df <- subset(df, !lc %in% c(41,43,81))
+cat(sprintf("Mean fire in df = %f\n",mean(df$fire)))
+colnames(df)[colnames(df) == 'fire'] <- 'y'
+reload = FALSE
+imbalance = data.frame()
+
+for (syear in years){
+  n = c(0,0,0)
+  diff = c(0,0,0)
+  for (treatment in treatments){
+    counter = 1
+    for (slc in  c(42, 52, 71)){
+      sdf = subset(df, lc==slc&year==syear)
+      # print(dim(sdf))
+      sdf$z <- sdf[,treatment]
+      if (reload) {
+        load(sprintf("D:/Krishna/projects/lfmc_for_ignitions/data/r/matching_28_feb_2022_%s.RData", treatment))
+      } else{
+        options("optmatch_max_problem_size" = Inf)
+        
+        start.time <- Sys.time()
+  
+        start.time <- Sys.time()
+        ppty <- glm(z ~ longitude + latitude , family = binomial(), data = sdf)
+        mhd = match_on(z ~ longitude + latitude + vpd_4m  + ppt_1y +  agb +  wind, data = sdf) # + caliper(match_on(ppty), 1)
+        ms.1 <- pairmatch(mhd, data = sdf)
+        # print(summary(ms.1))
+        # print(Sys.time() - start.time)
+      }
+      balance <- xBalance(z ~ longitude + latitude + vpd_4m  + ppt_1y +  agb +  wind +      strata(ms.1), data = sdf)
+      diff[counter] = mean(data.frame(balance)$results.std.diff.ms.1)
+      # plot(balance)
+      mdf <- sdf[!is.na(ms.1),]
+      matched = cast.senm(sdf, ms.1)
+      mdf$match <- matched$mset
+      n[counter] = dim(mdf)[1]
+      # head(mdf)
+      # write.csv(mdf,sprintf("D:/Krishna/projects/lfmc_for_ignitions/data/r/matches/matched_22_apr_2022_extreme_%s_%s.csv",
+                            # lcmap[lcmap$key==slc,"value"], syear), row.names = TRUE)
+      counter = counter + 1
+    }
+  }
+  cat("Year: ", syear, "standardized difference: ", sum(n*diff)/sum(n))
+}
+```
+```{r}
+
+
+
+```
